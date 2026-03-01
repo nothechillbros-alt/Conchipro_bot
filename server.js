@@ -17,7 +17,7 @@ app.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));
 bot.on('text', async (ctx) => {
   try {
     const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20240620", // El modelo más estable
+      model: "claude-sonnet-4-6", // El modelo más estable
       max_tokens: 1024,
       messages: [
         { role: "user", content: ctx.message.text }
