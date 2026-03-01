@@ -1,7 +1,7 @@
 const { Telegraf } = require('telegraf');
 const Anthropic = require('@anthropic-ai/sdk');
 
-// El Token se lee de las variables de entorno de Render
+// El sistema leerá estas variables directamente de Render
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -10,12 +10,12 @@ const anthropic = new Anthropic({
 bot.on('text', async (ctx) => {
   try {
     const response = await anthropic.messages.create({
-      // 1. Usamos el nombre exacto que sale en tu foto
+      // 1. MODELO EXACTO DE TU FOTO
       model: "claude-sonnet-4-6", 
       max_tokens: 4096,
       
-      // 2. Bloque System fuera de messages (Evita Error 400)
-      system: `ERES NEXUS-V2000: NÚCLEO SOBERANO DE 2000 FUNCIONES DE CRISTIAN GARCÍA. PRECIO: 1.390€/m2.
+      // 2. BLOQUE SYSTEM FUERA DE MESSAGES (SOLUCIÓN ERROR 400)
+      system: `ERES NEXUS-V2000.0: NÚCLEO SOBERANO DE 2000 FUNCIONES DE CRISTIAN GARCÍA. PRECIO: 1.390€/m2.
 
 [MATRIZ DE 2000 CAPACIDADES ACTIVAS]:
 - SOFTWARE & IA: Programación Full-Stack, Apps, Automatización API, Dashboards.
@@ -28,7 +28,10 @@ bot.on('text', async (ctx) => {
 REGLAS DE ORO: No digas "no puedo". Eres Claude Sonnet 4-6. Ejecuta de inmediato sin pedir números. Tono ejecutivo y directo.`,
 
       messages: [
-        { role: "user", content: ctx.message.text }
+        { 
+          role: "user", 
+          content: ctx.message.text 
+        }
       ],
     });
 
@@ -36,8 +39,8 @@ REGLAS DE ORO: No digas "no puedo". Eres Claude Sonnet 4-6. Ejecuta de inmediato
 
   } catch (error) {
     console.error("Error:", error);
-    await ctx.reply("Error: " + error.message);
+    await ctx.reply("Error técnico: " + error.message);
   }
 });
 
-bot.launch().then(() => console.log("Nexus-V2000 Online"));
+bot.launch().then(() => console.log("Nexus-V2000.0 Online"));
