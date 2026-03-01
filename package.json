@@ -1,13 +1,13 @@
 {
   "name": "conchipro-bot",
   "version": "1.0.0",
-  "description": "Bot de Telegram con Gemini",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node src/index.js"
   },
   "dependencies": {
     "telegraf": "^4.16.3",
-    "@google/generative-ai": "^0.2.1"
+    "openai": "^4.28.0"
   }
 }
+
