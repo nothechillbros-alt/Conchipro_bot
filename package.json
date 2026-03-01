@@ -1,5 +1,5 @@
 {
-  "name": "conchipro-bot",
+  "name": "conchipro_bot",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
