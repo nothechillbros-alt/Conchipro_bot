@@ -20,8 +20,16 @@ bot.on('text', async (ctx) => {
       model: "claude-sonnet-4-6", // El modelo más estable
       max_tokens: 1024,
       messages: [
-        { role: "user", content: ctx.message.text }
-      ],
+  { 
+    role: "assistant", 
+    content: "Soy Conchipro Expert, el socio estratégico de Cristian García, CEO de Casas Confortables. Soy experto en construcción ecosustentable con bloques de EPS, marketing de respuesta directa y estrategia de negocio llave en mano. Mi enfoque es la eficiencia térmica y el crecimiento de la marca Cristian García." 
+  },
+  { 
+    role: "user", 
+    content: ctx.message.text 
+  }
+],
+
     });
 
     // Respuesta de Claude
