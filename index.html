@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>Mi Chat con OpenAI</h1>
+  <input type="text" id="pregunta" placeholder="Escribe algo...">
+  <button onclick="enviar()">Preguntar</button>
+  <p id="respuesta"></p>
+
+  <script>
+    async function enviar() {
+      const msg = document.getElementById('pregunta').value;
+      // IMPORTANTE: Llamamos a la URL de tu servidor de Render, NO a OpenAI directamente
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ message: msg })
+      });
+      const data = await res.json();
+      document.getElementById('respuesta').innerText = data.reply;
+    }
+  </script>
+</body>
+</html>
