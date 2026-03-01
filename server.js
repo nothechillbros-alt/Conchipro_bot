@@ -3,33 +3,29 @@ const Anthropic = require('@anthropic-ai/sdk');
 const express = require('express');
 
 const app = express();
-const port = process.env.PORT || 3000;
-
-// Configuración de las APIs
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Respuesta de prueba
-bot.start((ctx) => ctx.reply('¡Conchipro_bot activado con Claude!'));
+// Puerto para que Render no dé error de puerto
+const PORT = process.env.PORT || 3000;
+app.get('/', (req, res) => res.send('Bot Vivo 🚀'));
+app.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));
 
 bot.on('text', async (ctx) => {
-    try {
-        const response = await anthropic.messages.create({
-            model: "claude-3-5-sonnet-20240620",
-            max_tokens: 1024,
-            messages: [{ role: "user", content: ctx.message.text }],
-        });
-        await ctx.reply(response.content[0].text);
-    } catch (err) {
-        console.error("ERROR:", err);
-        await ctx.reply("Error real: " + err.message);
-    }
+  try {
+    const msg = await anthropic.messages.create({
+      model: "claude-3-haiku-20240307",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: ctx.message.text }],
+    });
+    ctx.reply(msg.content[0].text);
+  } catch (error) {
+    console.error(error);
+    ctx.reply("Conchi, hay un problema con la conexión a Claude.");
+  }
 });
-la
-bot.launch();
 
-// Servidor para Render
-app.get('/', (req, res) => res.send('Bot funcionando'));
-app.listen(port, () => console.log(`Puerto ${port} abierto`));
+bot.launch();
+console.log("🚀 Conchipro_bot con Claude encendido!");
