@@ -5,29 +5,30 @@ const express = require('express');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// 1. Configuración de APIs
+// Configuración
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// 2. Lógica del Bot con Claude
 bot.on('text', async (ctx) => {
-  try {
-    const msg = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20240620", // El modelo más potente de Claude
-      max_tokens: 1024,
-      messages: [{ role: "user", content: ctx.message.text }],
-    });
+    console.log("Mensaje recibido:", ctx.message.text);
+    try {
+        const response = await anthropic.messages.create({
+            model: "claude-3-5-sonnet-20240620",
+            max_tokens: 1024,
+            messages: [{ role: "user", content: ctx.message.text }],
+        });
 
-    await ctx.reply(msg.content[0].text);
-  } catch (error) {
-    console.error("Error con Claude:", error);
-    await ctx.reply("Lo siento, mi conexión con Claude ha fallado.");
-  }
+        await ctx.reply(response.content[0].text);
+    } catch (err) {
+        console.error("ERROR DETECTADO:", err.message);
+        // Esto nos dirá en Telegram qué está pasando realmente
+        await ctx.reply("Error: " + err.message);
+    }
 });
 
-// 3. Lanzar bot y servidor
-bot.launch().then(() => console.log('=> Bot con Claude funcionando'));
-app.get('/', (req, res) => res.send('Bot de Claude Activo'));
-app.listen(port);
+bot.launch().then(() => console.log("=> Bot Conchipro_bot conectado a Telegram"));
+
+app.get('/', (req, res) => res.send('Servidor de Conchipro_bot Activo'));
+app.listen(port, () => console.log(`Puerto ${port} listo`));
