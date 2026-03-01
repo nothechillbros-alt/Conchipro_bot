@@ -1,2 +1,0 @@
-# Conchipro_bot
-Bot
