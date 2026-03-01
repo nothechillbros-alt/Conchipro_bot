@@ -1,26 +1,25 @@
 const { Telegraf } = require('telegraf');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const OpenAI = require('openai');
 
-// Configuración del Bot y la IA
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-// Lógica de respuesta
 bot.on('text', async (ctx) => {
   try {
-    // El bot envía lo que escribes a Gemini
-    const result = await model.generateContent(ctx.message.text);
-    const response = await result.response;
-    // El bot te responde en Telegram
-    ctx.reply(response.text());
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: "user", content: ctx.message.text }],
+      model: "gpt-3.5-turbo",
+    });
+    ctx.reply(completion.choices[0].message.content);
   } catch (error) {
-    console.error("Error en el bot:", error);
-    ctx.reply("Lo siento, Conchi, algo ha fallado. Revisa los Logs en Render.");
+    console.error(error);
+    ctx.reply("Error con OpenAI. Revisa el crédito o la llave en Render.");
   }
 });
 
-// Lanzamiento
 bot.launch();
-console.log("🚀 Conchipro_bot encendido y listo en la nube!");
+console.log("🚀 ¡Conchipro_bot funcionando con ChatGPT!");
+
 
