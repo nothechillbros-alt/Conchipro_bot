@@ -1,30 +1,38 @@
-const express = require('express');
+const { Telegraf } = require('telegraf');
 const { OpenAI } = require('openai');
+const express = require('express');
+
 const app = express();
+const port = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(express.static('.')); // Esto sirve tu archivo index.html automáticamente
-
-// Configuración con tu API Key de OpenAI
+// 1. Configuración de APIs
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const openai = new OpenAI({
-  apiKey: "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"
+    apiKey: process.env.OPENAI_API_KEY
 });
 
-// Ruta para procesar el chat
-app.post('/api/chat', async (req, res) => {
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o", // Puedes cambiar a "gpt-3.5-turbo" si prefieres ahorrar créditos
-      messages: [{ role: "user", content: req.body.message }],
-    });
-    
-    res.json({ reply: completion.choices[0].message.content });
-  } catch (error) {
-    console.error("Error en OpenAI:", error);
-    res.status(500).json({ error: "Hubo un error al procesar tu mensaje" });
-  }
+// 2. Lógica del Bot de Telegram
+bot.start((ctx) => ctx.reply('¡Hola! Soy tu bot Conchipro. ¿En qué puedo ayudarte?'));
+
+bot.on('text', async (ctx) => {
+    try {
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [{ role: "user", content: ctx.message.text }],
+        });
+        await ctx.reply(completion.choices[0].message.content);
+    } catch (error) {
+        console.error("Error OpenAI:", error);
+        await ctx.reply("Ups, tengo un problema con mi cerebro de IA.");
+    }
 });
 
-// El puerto 3000 es estándar, pero Render suele usar el que le asigne el sistema
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor funcionando en el puerto ${PORT}`));
+// 3. Lanzar el bot
+bot.launch()
+    .then(() => console.log('=> Bot de Telegram en marcha'))
+    .catch((err) => console.error('Error al lanzar Telegram:', err));
+
+// 4. Servidor web (para que Render no se queje)
+app.get('/', (req, res) => res.send('Bot funcionando correctamente'));
+app.listen(port, () => console.log(`Servidor web en puerto ${port}`));
+
