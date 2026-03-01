@@ -1,5 +1,4 @@
-<!-- end list -->
-  const { Telegraf } = require('telegraf');
+const { Telegraf } = require('telegraf');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
