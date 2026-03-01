@@ -16,7 +16,8 @@ app.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));
 bot.on('text', async (ctx) => {
   try {
     const msg = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307",
+      model: "claude-3-5-sonnet-20240620",
+      anthropicVersion: '2023-06-01
       max_tokens: 1000,
       messages: [{ role: "user", content: ctx.message.text }],
     });
