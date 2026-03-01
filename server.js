@@ -12,7 +12,7 @@ bot.on('text', async (ctx) => {
     // LLAMADA A LA API DE CLAUDE SONNET 4-6 (VERSION 3.5 o 3.7)
     const response = await anthropic.messages.create({
   // MODELO EXACTO DE TU CAPTURA DE PANTALLA
-  model: "claude-sonnet-4-6", 
+  model: "claude-sonnet-4-6-20240620", 
   max_tokens: 4096,
   
   // PARÁMETRO SYSTEM: EL CEREBRO DE LAS 2000 FUNCIONES
