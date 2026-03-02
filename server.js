@@ -11,8 +11,9 @@ const anthropic = new Anthropic({
 bot.on('text', async (ctx) => {
   try {
     // 2. LLAMADA AL MOTOR CLAUDE SONNET 4.6
+    // Usamos el ID técnico estable para evitar errores 404
     const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20240620", // ID técnico de la versión 4.6 estable
+      model: "claude-3-5-sonnet-20240620", 
       max_tokens: 4096,
       
       // BLOQUE SYSTEM: El núcleo de las 2000 funciones
@@ -46,7 +47,6 @@ REGLAS DE ORO:
 
   } catch (error) {
     console.error("ERROR EN EL SISTEMA:", error.message);
-    // Este mensaje te ayudará a diagnosticar si falla algo en los logs de Render
     await ctx.reply("Nexus-V2000 en mantenimiento técnico: " + error.message);
   }
 });
