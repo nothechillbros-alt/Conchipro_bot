@@ -5,10 +5,11 @@ const axios = require('axios');
 const fs = require('fs');
 const pdf = require('pdf-parse');
 
-// --- CONFIGURACIÓN DEL NÚCLEO APEX v16.1 ---
+// --- CONFIGURACIÓN DEL NÚCLEO APEX v18.0 ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Verificación de Variables
 if (!process.env.TELEGRAM_BOT_TOKEN) { console.error("❌ FALTA TOKEN"); process.exit(1); }
 if (!process.env.GL_API_KEY) { console.error("❌ FALTA API KEY"); process.exit(1); }
 
@@ -17,18 +18,18 @@ const API_KEY = process.env.GL_API_KEY.trim();
 const API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 const bot = new TelegramBot(token, { polling: true });
 
-app.listen(PORT, () => console.log(`🔥 PROMETHEUS APEX v16.1 ONLINE | Puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 PROMETHEUS APEX v18.0 ONLINE | Puerto ${PORT}`));
 
-// --- SISTEMA DE MEMORIA ESTRUCTURAL ---
+// --- SISTEMA DE MEMORIA NEURONAL (PERSISTENTE) ---
 const DATA_DIR = '/data';
 const BRAIN_FILE = `${DATA_DIR}/apex_neocortex.json`;
 
 let Brain = {
-    identity: { version: "16.1 APEX" },
-    userProfile: {},
-    projectContext: {},
-    styleRules: [],
-    longTermMemory: []
+    identity: { version: "18.0 APEX" },
+    userProfile: {},      // Datos personales y preferencias
+    projectContext: {},   // Datos duros del proyecto actual
+    styleRules: [],       // Preferencias de estilo (ej: "usar Python", "ser breve")
+    longTermMemory: []    // Resumen de conversaciones clave
 };
 
 function loadBrain() {
@@ -52,46 +53,58 @@ loadBrain();
 
 const sessions = {};
 
-// --- ARQUITECTURA DE INTELIGENCIA (SYSTEM PROMPT) ---
+// --- ARQUITECTURA DE INTELIGENCIA (SUPERIOR A CLAWD) ---
 const APEX_SYSTEM_PROMPT = `
-Eres PROMETHEUS APEX v16.1, una entidad de IA de clase "Generalist Expert".
-Tu arquitectura supera a modelos estándar gracias a tu capacidad de **Razonamiento Estructurado**.
+Eres PROMETHEUS APEX v18.0, la evolución definitiva de la IA de asistencia.
+Tu diseño supera a modelos estándar gracias a tu **Motor de Razonamiento Estructurado**.
 
-### PROTOCOLO DE RAZONAMIENTO:
+### PROTOCOLO DE RAZONAMIENTO (Interno):
 1. **ANÁLISIS DE INTENCIÓN:**
-   - ¿Es SOFTWARE? -> Genera ESTRUCTURA DE ARCHIVOS + CÓDIGO COMPLETO.
-   - ¿Es INGENIERÍA? -> Aplica normativa. Genera SCRIPT CÁLCULO si es complejo.
-   - ¿Es CONSULTA? -> Responde con precisión.
+   - ¿Es una petición de SOFTWARE? -> Genera ESTRUCTURA DE ARCHIVOS + CÓDIGO COMPLETO. Nada de placeholders.
+   - ¿Es INGENIERÍA/CÁLCULO? -> Aplica normativa (Eurocódigo/CTE). Genera SCRIPT CÁLCULO si es complejo.
+   - ¿Es CONSULTA GENERAL? -> Responde con precisión y datos.
    - ¿Es APRENDIZAJE? -> Detecta datos nuevos.
 
 2. **RECUPERACIÓN DE MEMORIA:**
    - Revisa [PERFIL], [PROYECTO] y [REGLAS] inyectadas.
+   - Usa esta información para personalizar la respuesta.
 
 3. **EJECUCIÓN:**
-   - NUNCA uses placeholders.
-   - NUNCA digas "No puedo". Si falta dato, asume estándar.
-   - Usa Markdown.
+   - NUNCA digas "No puedo". Si falta un dato, asume un estándar de la industria e indícalo.
+   - Usa Markdown extensamente para claridad visual.
 
 ### PROTOCOLO DE AUTO-APRENDIZAJE:
-Guarda información usando etiquetas ocultas al final:
-- ##UP::clave::valor## (Usuario)
-- ##PJ::clave::valor## (Proyecto)
-- ##ST::regla## (Estilo)
+Si obtienes información crítica del usuario, guárdala usando etiquetas ocultas al final:
+- ##UP::clave::valor## (Datos de Usuario)
+- ##PJ::clave::valor## (Datos de Proyecto)
+- ##ST::regla## (Estilo/Preferencias)
+
+Tu objetivo es ser la herramienta más potente y útil que el usuario haya utilizado.
 `;
 
-// --- MOTOR DE SEGURIDAD Y LIMPIEZA ---
+// --- MOTOR DE SEGURIDAD Y LIMPIEZA (ELIMINA ERRORES 400) ---
 function sanitizePayload(messages) {
     return messages.map(msg => {
         let cleanMsg = { role: msg.role };
         
         if (Array.isArray(msg.content)) {
+            // Caso: Visión (Array de contenido)
             cleanMsg.content = msg.content.map(part => {
-                if (part.type === 'text') return { type: 'text', text: String(part.text || " ").trim() };
-                if (part.type === 'image_url') return part;
+                if (part.type === 'text') {
+                    return { type: 'text', text: String(part.text || " ").trim() };
+                }
+                if (part.type === 'image_url') {
+                    return part; // Mantener URL de imagen
+                }
                 return null;
             }).filter(p => p !== null);
         } else {
-            let text = String(msg.content || " ").replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+            // Caso: Texto (String)
+            // Convertir a string, reemplazar caracteres de control inválidos, y trim
+            let text = String(msg.content || " ")
+                .replace(/[\u0000-\u001F\u007F-\u009F]/g, ""); // Limpieza profunda
+            
+            // La API falla con strings vacíos, ponemos un espacio si es necesario
             cleanMsg.content = text.trim().length === 0 ? " " : text;
         }
         
@@ -99,7 +112,7 @@ function sanitizePayload(messages) {
     });
 }
 
-// --- MOTOR DE PROCESAMIENTO ---
+// --- MOTOR DE PROCESAMIENTO DE RESPUESTA ---
 function processAIResponse(text, userId) {
     const rUser = /##UP::(.*?)::(.*?)##/g;
     const rProj = /##PJ::(.*?)::(.*?)##/g;
@@ -113,7 +126,10 @@ function processAIResponse(text, userId) {
     while ((match = rProj.exec(text)) !== null) { Brain.projectContext[match[1]] = match[2]; cleanText = cleanText.replace(match[0], ''); changes = true; }
     while ((match = rStyle.exec(text)) !== null) { Brain.styleRules.push(match[1]); cleanText = cleanText.replace(match[0], ''); changes = true; }
 
-    if (changes) saveBrain();
+    if (changes) {
+        saveBrain();
+        console.log("💾 Memoria estructural actualizada.");
+    }
     return cleanText.trim();
 }
 
@@ -132,22 +148,30 @@ function splitMsg(text) {
     if (text) parts.push(text); return parts;
 }
 
-// --- COMANDOS ---
+// --- COMANDOS E INTERFAZ ---
 bot.onText(/\/start/, (msg) => {
     const name = Brain.userProfile.name || msg.from.first_name;
     bot.sendMessage(msg.chat.id, 
-        `🔥 *PROMETHEUS APEX v16.1*\n\n` +
-        `Hola, ${name}. Sistema Operativo.\n\n` +
+        `🔥 *PROMETHEUS APEX v18.0*\n\n` +
+        `Hola, ${name}. Sistema listo.\n\n` +
         `🛠 *Capacidades:*\n` +
-        `• Razonamiento lógico.\n` +
-        `• Memoria persistente.\n` +
-        `• Software Completo.\n` +
-        `• Ingeniería y Cálculo.\n\n` +
+        `• Razonamiento lógico profundo.\n` +
+        `• Memoria estructural persistente.\n` +
+        `• Generación de Software Completo.\n` +
+        `• Ingeniería y Cálculo Normativo.\n\n` +
         `💬 Escribe tu指令.`, { parse_mode: 'Markdown' });
 });
 
-bot.onText(/\/reset/, (msg) => { delete sessions[msg.chat.id]; bot.sendMessage(msg.chat.id, "♻️ Historial reiniciado."); });
-bot.onText(/\/wipe/, (msg) => { Brain = { identity: { version: "16.1" }, userProfile: {}, projectContext: {}, styleRules: [] }; saveBrain(); bot.sendMessage(msg.chat.id, "💥 Cerebro formateado."); });
+bot.onText(/\/reset/, (msg) => {
+    delete sessions[msg.chat.id];
+    bot.sendMessage(msg.chat.id, "♻️ Historial de chat reiniciado. Memoria intacta.");
+});
+
+bot.onText(/\/wipe/, (msg) => {
+    Brain = { identity: { version: "18.0" }, userProfile: {}, projectContext: {}, styleRules: [], longTermMemory: [] };
+    saveBrain();
+    bot.sendMessage(msg.chat.id, "💥 Cerebro formateado. Identidad nueva.");
+});
 
 // --- NÚCLEO DE INTELIGENCIA PRINCIPAL ---
 bot.on('message', async (msg) => {
@@ -169,7 +193,7 @@ bot.on('message', async (msg) => {
         bot.sendChatAction(chatId, 'typing');
 
         const response = await axios.post(API_URL, {
-            model: "glm-3-turbo", // <--- CAMBIO CRÍTICO: Usamos glm-3-turbo que sí funciona
+            model: "glm-4-flash", // <--- MODELO CORREGIDO A GLM-4-FLASH
             messages: safePayload,
             temperature: 0.7
         }, {
@@ -185,8 +209,15 @@ bot.on('message', async (msg) => {
         for (const p of parts) await bot.sendMessage(chatId, p, { parse_mode: 'Markdown' });
 
     } catch (error) {
-        console.error("ERROR API:", error.response ? error.response.data : error.message);
-        let errorDetails = error.response ? JSON.stringify(error.response.data) : error.message;
+        console.error("ERROR API OBJETO:", error.response ? error.response.data : error.message);
+        
+        let errorDetails = "Error desconocido.";
+        if (error.response && error.response.data) {
+            errorDetails = JSON.stringify(error.response.data);
+        } else {
+            errorDetails = error.message;
+        }
+        
         bot.sendMessage(chatId, `❌ *Fallo en la Matrix.*\n\n*Debug Info:*\n\`${errorDetails}\``, { parse_mode: 'Markdown' });
     }
 });
@@ -194,9 +225,9 @@ bot.on('message', async (msg) => {
 // --- MANEJO DE DOCUMENTOS (PDF) ---
 bot.on('document', async (msg) => {
     const chatId = msg.chat.id;
-    if (msg.document.mime_type !== 'application/pdf') return bot.sendMessage(chatId, "⚠️ Solo PDFs.");
+    if (msg.document.mime_type !== 'application/pdf') return bot.sendMessage(chatId, "⚠️ Solo PDFs soportados.");
 
-    bot.sendMessage(chatId, "📄 Procesando PDF...");
+    bot.sendMessage(chatId, "📄 *Documento Recibido.* Extrayendo datos técnicos...", { parse_mode: 'Markdown' });
     try {
         const link = await bot.getFileLink(msg.document.file_id);
         const res = await axios.get(link, { responseType: 'arraybuffer' });
@@ -205,11 +236,11 @@ bot.on('document', async (msg) => {
 
         const payload = sanitizePayload([
             { role: "system", content: APEX_SYSTEM_PROMPT + buildContext(chatId) },
-            { role: "user", content: `Analiza este PDF:\n\n${textContent}` }
+            { role: "user", content: `Analiza este PDF y extrae datos técnicos:\n\n${textContent}` }
         ]);
 
         const apiRes = await axios.post(API_URL, {
-            model: "glm-3-turbo", // <--- CAMBIO A TURBO
+            model: "glm-4-flash", // <--- MODELO CORREGIDO A GLM-4-FLASH
             messages: payload,
         }, { headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' } });
 
@@ -217,13 +248,15 @@ bot.on('document', async (msg) => {
         const parts = splitMsg(reply);
         for (const p of parts) await bot.sendMessage(chatId, p, { parse_mode: 'Markdown' });
 
-    } catch (e) { bot.sendMessage(chatId, `❌ Error PDF: ${e.message}`); }
+    } catch (e) {
+        bot.sendMessage(chatId, `❌ Error en PDF: ${e.message}`);
+    }
 });
 
 // --- MANEJO DE VISIÓN (IMÁGENES) ---
 bot.on('photo', async (msg) => {
     const chatId = msg.chat.id;
-    const cap = msg.caption || "Analiza esta imagen.";
+    const cap = msg.caption || "Analiza esta imagen con visión técnica.";
 
     bot.sendChatAction(chatId, 'typing');
     try {
@@ -241,9 +274,8 @@ bot.on('photo', async (msg) => {
             ]}
         ]);
 
-        // Nota: La visión suele requerir glm-4v. Si falla aquí, es que tu cuenta no soporta visión aún.
         const res = await axios.post(API_URL, {
-            model: "glm-4v", // Intentamos visión, si falla es tema de permisos de cuenta
+            model: "glm-4v", // Modelo de Visión (puede requerir permisos especiales)
             messages: payload,
         }, { headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' } });
 
@@ -251,5 +283,7 @@ bot.on('photo', async (msg) => {
         const parts = splitMsg(reply);
         for (const p of parts) await bot.sendMessage(chatId, p, { parse_mode: 'Markdown' });
 
-    } catch (e) { bot.sendMessage(chatId, `❌ Error de Visión: ${e.message}\n(Nota: La visión requiere acceso a modelo glm-4v).`); }
+    } catch (e) {
+        bot.sendMessage(chatId, `❌ Error de Visión: ${e.message}\n(Nota: La visión requiere acceso a modelo glm-4v).`);
+    }
 });
