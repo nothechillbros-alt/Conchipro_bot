@@ -1,7 +1,7 @@
 {
-  "name": "prometheus-apex-v18",
-  "version": "18.0.0",
-  "description": "Bot APEX ULTIMATE con modelo GLM-4-Flash y razonamiento mejorado.",
+  "name": "prometheus-ultra-v20",
+  "version": "20.0.0",
+  "description": "Arquitectura IA definitiva con Auto-Detección de Modelos y Razonamiento Superior.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
