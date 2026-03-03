@@ -1,7 +1,7 @@
 {
-  "name": "omega-architect-system",
-  "version": "11.0.0",
-  "description": "Plataforma IA definitiva: PDF, Visión, Ingeniería y Apps.",
+  "name": "omega-prometheus-v13",
+  "version": "13.0.0",
+  "description": "Arquitectura de IA con Razonamiento, Auto-Mejora y Generación de Ecosistemas.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
