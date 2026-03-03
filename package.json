@@ -1,7 +1,7 @@
 {
-  "name": "prometheus-ultimate-v14",
-  "version": "14.0.0",
-  "description": "Arquitectura de IA definitiva con Razonamiento y Estabilidad.",
+  "name": "prometheus-apex-v16",
+  "version": "16.0.0",
+  "description": "Arquitectura de IA APEX: Razonamiento, Memoria Estructural y Generación de Software.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
