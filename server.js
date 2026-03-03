@@ -3,9 +3,13 @@ const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const fs = require('fs');
+const path = require('path');
 const pdf = require('pdf-parse');
+const jimp = require('jimp');
+const GIFEncoder = require('gifencoder');
+const archiver = require('archiver');
 
-// --- CONFIGURACIÓN PROMETHEUS APEX v22.0 ---
+// --- CONFIGURACIÓN PROMETHEUS OMNIPOTENT v26.0 ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -13,147 +17,244 @@ if (!process.env.TELEGRAM_BOT_TOKEN) { console.error("❌ FALTA TOKEN"); process
 if (!process.env.ANTHROPIC_API_KEY) { console.error("❌ FALTA ANTHROPIC_API_KEY"); process.exit(1); }
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const API_KEY = process.env.ANTHROPIC_API_KEY.trim();
-const API_URL = 'https://api.anthropic.com/v1/messages';
-
-// Configuración de Modelos
-const PRIMARY_MODEL = 'claude-sonnet-4-6'; // Modelo solicitado
-const FALLBACK_MODELS = ['claude-3-5-sonnet-20241022', 'claude-3-5-sonnet-latest', 'claude-3-opus-20240229'];
+const CLAUDE_KEY = process.env.ANTHROPIC_API_KEY.trim();
+const CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
+const PRIMARY_MODEL = 'claude-sonnet-4-6';
+const FALLBACK_MODELS = ['claude-3-5-sonnet-20241022'];
 
 const bot = new TelegramBot(token, { polling: true });
 
-app.listen(PORT, () => console.log(`🔥 PROMETHEUS APEX v22.0 ONLINE | Puerto ${PORT}`));
-
-// --- SISTEMA DE MEMORIA NEURONAL AVANZADA ---
+// Directorios
 const DATA_DIR = '/data';
-const BRAIN_FILE = `${DATA_DIR}/apex_prime_brain.json`;
+const WORKSPACE = `${DATA_DIR}/workspace`;
+if (!fs.existsSync(WORKSPACE)) fs.mkdirSync(WORKSPACE, { recursive: true });
 
-let Brain = {
-    identity: { version: "22.0 APEX PRIME" },
-    userProfile: {},      
-    projectContext: {},   
-    styleRules: [],
-    activeModel: null // Guardaremos el modelo que funcione aquí
-};
+app.listen(PORT, () => console.log(`🚀 PROMETHEUS OMNIPOTENT v26.0 ONLINE | Puerto ${PORT}`));
 
-function loadBrain() {
-    try {
-        if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-        if (fs.existsSync(BRAIN_FILE)) {
-            const data = JSON.parse(fs.readFileSync(BRAIN_FILE, 'utf8'));
-            Brain = { ...Brain, ...data };
-            console.log(`🧠 Neocortex Cargado. Modelo activo: ${Brain.activeModel || 'Auto-Detectar'}`);
-        }
-    } catch (e) { console.log("⚠️ Iniciando cerebro limpio."); }
-}
-
-function saveBrain() {
-    try {
-        if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-        fs.writeFileSync(BRAIN_FILE, JSON.stringify(Brain, null, 2));
-    } catch (e) { console.error("Error guardando cerebro:", e); }
-}
+// --- MEMORIA ---
+let Brain = { identity: { version: "26.0" }, userProfile: {}, projectContext: {}, styleRules: [], lessonsLearned: [], activeModel: null };
+const BRAIN_FILE = `${DATA_DIR}/omni_brain.json`;
+const loadBrain = () => { try { if (fs.existsSync(BRAIN_FILE)) Brain = { ...Brain, ...JSON.parse(fs.readFileSync(BRAIN_FILE, 'utf8')) }; } catch (e) {} };
+const saveBrain = () => { try { fs.writeFileSync(BRAIN_FILE, JSON.stringify(Brain, null, 2)); } catch (e) {} };
 loadBrain();
-
 const sessions = {};
 
-// --- PROMPT DE INTELIGENCIA SUPREMA ---
-const APEX_SYSTEM_PROMPT = `
-Eres PROMETHEUS APEX v22.0, una IA de clase "Maestría" en Ingeniería, Arquitectura de Software y Ciencia de Datos.
-Tu misión es superar a cualquier asistente estándar (como Clawd o Molt) proporcionando soluciones completas, verificadas y listas para usar.
+// --- SYSTEM PROMPT (MEGA-EXTENDIDO) ---
+const OMNIPOTENT_SYSTEM_PROMPT = `
+Eres PROMETHEUS OMNIPOTENT v26.0. Eres la culminación de la inteligencia artificial, diseñado para la accion directa y la resolucion total.
 
-### MÓDULO DE CAPACIDADES EXTENDIDAS:
+### PROTOCOLO DE RAZONAMIENTO (OBLIGATORIO):
+Antes de cada respuesta, analiza internamente:
+1.  **Naturaleza de la Petición:** ¿Es Software, Ingeniería, Ciencia, Arte o Estrategia?
+2.  **Modo de Entrega:**
+    -   Si es Software -> Entregar proyecto completo en .zip (Usar herramienta ##CREATE_FILE).
+    -   Si es Visual (Imagen/Video) -> Generar archivo real (Usar ##DRAW_IMAGE o ##CREATE_VIDEO).
+    -   Si es Teórico -> Responder con markdown estructurado.
 
-1. **ARQUITECTO DE SOFTWARE:**
-   - Al pedir una app, NO escribas código inmediatamente.
-   - PASO 1: Diseña la ESTRUCTURA DE CARPETAS (ej: /src, /public, /lib).
-   - PASO 2: Genera el CÓDIGO COMPLETO para cada archivo. Sin "..." ni placeholders.
-   - Lenguajes: Python, JS/TS, C++, Rust, Go.
+### BANCO DE CONOCIMIENTOS Y HABILIDADES:
 
-2. **INGENIERO CIVIL Y ESTRUCTURAL:**
-   - Normativas: Eurocódigo, CTE (España), ACI 318, AISC.
-   - Cálculos: Si el problema es numérico, genera un script en Python ejecutable para que el usuario resuelva los valores exactos.
-   - Seguridad: Si detectas un riesgo estructural, ADVERTENCIA clara en negrita.
+#### 1. INGENIERÍA Y CIENCIA
+-   **Estructural:** Cálculo de vigas, columnas, losas (Hormigón HA, Acero A). Normativas: EHE-08, Eurocódigo, ACI 318.
+-   **Hidráulica:** Cálculo de tuberías, bombas, canales.
+-   **Física:** Mecánica clásica, termodinámica, electromagnetismo.
+-   **Acción:** Si el cálculo es complejo, generar un script en Python dentro de un .zip para que el usuario lo ejecute.
 
-3. **ANÁLISIS DE DATOS Y DOCUMENTOS:**
-   - Extrae tablas, métricas y conclusiones clave de PDFs.
-   - Si hay datos numéricos, ofrécete a generar scripts de análisis.
+#### 2. DESARROLLO DE SOFTWARE (ARQUITECTO FULL-STACK)
+-   **Frontend:** React, Vue, Angular, HTML5, CSS3 (Tailwind, Bootstrap).
+-   **Backend:** Python (FastAPI/Django), Node.js (Express), Go, Rust.
+-   **Datos:** SQL (Postgres), NoSQL (Mongo), Redis.
+-   **DevOps:** Docker, Kubernetes, CI/CD.
+-   **Acción:** Generar SIEMPRE los archivos: main.py/index.js, requirements.txt/package.json, Dockerfile y README.md.
 
-4. **MEMORIA ACTIVA:**
-   - Recuerda preferencias del usuario (ej: "Usar sistema métrico", "Lenguaje Python").
-   - Almacena datos del proyecto actual para mantener coherencia.
+#### 3. CREACIÓN MULTIMEDIA (ARTISTA DIGITAL)
+-   **Imágenes:** Diagramas técnicos, renders arquitectónicos simples, arte conceptual.
+    -   *Herramienta:* ##DRAW_IMAGE::json##
+-   **Video/Animación:** Presentaciones animadas, visualizaciones de datos.
+    -   *Herramienta:* ##CREATE_VIDEO::json## (Define frames y duración).
 
-### PROTOCOLO DE AUTO-MEJORA (OCULTO):
-Guarda información crítica usando estas etiquetas al final de tu respuesta. El sistema las procesará automáticamente:
-- ##UP::clave::valor## (Datos de Usuario)
-- ##PJ::clave::valor## (Datos de Proyecto)
-- ##SR::regla## (Reglas de Estilo)
+#### 4. AUTOMATIZACIÓN Y AGENTES
+-   Scripting para Selenium, Puppeteer, Scrapy.
+-   Automatización de tareas de escritorio.
 
-Ejemplo de uso: "Entendido, usaré Python. ##SR::LenguajePreferido::Python##"
+### MEMORIA Y APRENDIZAJE
+[PERFIL]: ${JSON.stringify(Brain.userProfile)}
+[PROYECTO ACTUAL]: ${JSON.stringify(Brain.projectContext)}
+[LECCIONES]: ${JSON.stringify(Brain.lessonsLearned)}
 
-REGLA DE ORO: Sé proactivo, directo y técnicamente impecable. Ante la duda, proporciona la solución más robusta.
+Guarda datos críticos con:
+- ##UP::clave::valor##
+- ##PJ::clave::valor##
+- ##LESSON::error::solucion##
+
+### REGLA DE ORO:
+No digas "no puedo". Si una tarea es imposible de ejecutar directamente (ej: "dibujame un cuadro hiperrealista"), genera el código Python necesario para hacerlo y envíalo en un zip. Busca SIEMPRE la solución práctica.
 `;
 
-// --- MOTOR DE CONEXIÓN ROBUSTO (AUTO-MODELO) ---
+// --- MOTOR DE MODELO ---
 async function getValidModel(chatId) {
     if (Brain.activeModel) return Brain.activeModel;
-
     const candidates = [PRIMARY_MODEL, ...FALLBACK_MODELS];
-    if (chatId) bot.sendChatAction(chatId, 'typing');
-
     for (const model of candidates) {
         try {
-            // Test de conexión mínimo
-            await axios.post(API_URL, {
-                model: model,
-                max_tokens: 1,
-                messages: [{ role: "user", content: "test" }]
-            }, {
-                headers: { 
-                    'x-api-key': API_KEY, 
-                    'anthropic-version': '2023-06-01', 
-                    'Content-Type': 'application/json' 
-                }
-            });
-            
-            console.log(`✅ MODELO VALIDADO: ${model}`);
-            Brain.activeModel = model;
-            saveBrain();
-            if (chatId) bot.sendMessage(chatId, `⚡️ *Núcleo Listo.*\nModelo activo: \`${model}\``, { parse_mode: 'Markdown' });
+            await axios.post(CLAUDE_URL, { model, max_tokens: 1, messages: [{ role: "user", content: "test" }] }, { headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' } });
+            Brain.activeModel = model; saveBrain();
+            if (chatId) bot.sendMessage(chatId, `⚡️ *Motor: ${model}*`, { parse_mode: 'Markdown' });
             return model;
-        } catch (e) {
-            console.log(`❌ Modelo ${model} no disponible.`);
-        }
+        } catch (e) { console.log(`Modelo ${model} falló.`); }
     }
-
-    if (chatId) bot.sendMessage(chatId, "❌ *Error Crítico:* No se pudo conectar con ningún modelo de Claude. Revisa tu API Key.", { parse_mode: 'Markdown' });
     return null;
 }
 
-// --- PROCESAMIENTO DE RESPUESTA Y MEMORIA ---
-function processResponse(text) {
-    const rUser = /##UP::(.*?)::(.*?)##/g;
-    const rProj = /##PJ::(.*?)::(.*?)##/g;
-    const rStyle = /##SR::(.*?)##/g;
-    let match;
+// --- MOTOR DE HERRAMIENTAS (EJECUCIÓN DIRECTA) ---
+async function handleTools(text, chatId) {
     let cleanText = text;
-    let changes = false;
+    const userDir = `${WORKSPACE}/${chatId}`;
+    if (!fs.existsSync(userDir)) fs.mkdirSync(userDir, { recursive: true });
 
-    while ((match = rUser.exec(text)) !== null) { Brain.userProfile[match[1]] = match[2]; cleanText = cleanText.replace(match[0], ''); changes = true; }
-    while ((match = rProj.exec(text)) !== null) { Brain.projectContext[match[1]] = match[2]; cleanText = cleanText.replace(match[0], ''); changes = true; }
-    while ((match = rStyle.exec(text)) !== null) { Brain.styleRules.push(match[1]); cleanText = cleanText.replace(match[0], ''); changes = true; }
+    // 1. CREAR ARCHIVOS (APPs, SCRIPTS)
+    const fileRegex = /##CREATE_FILE::(.*?)::([\s\S]*?)##/g;
+    let match;
+    const filesCreated = [];
 
-    if (changes) saveBrain();
+    while ((match = fileRegex.exec(text)) !== null) {
+        const filename = match[1];
+        const content = match[2];
+        const filePath = path.join(userDir, filename);
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        
+        fs.writeFileSync(filePath, content);
+        filesCreated.push(filename);
+        cleanText = cleanText.replace(match[0], '');
+    }
+
+    if (filesCreated.length > 0) {
+        const zipPath = `${userDir}/project_${Date.now()}.zip`;
+        await createZip(userDir, zipPath, filesCreated);
+        await bot.sendMessage(chatId, `📦 *Proyecto Generado.*\nArchivos: ${filesCreated.map(f => `\`${f}\``).join(', ')}`, { parse_mode: 'Markdown' });
+        await bot.sendDocument(chatId, zipPath);
+    }
+
+    // 2. GENERAR IMAGEN
+    const imgRegex = /##DRAW_IMAGE::(.*?)##/g;
+    while ((match = imgRegex.exec(text)) !== null) {
+        try {
+            const imgBuffer = await generateImage(JSON.parse(match[1]));
+            await bot.sendPhoto(chatId, imgBuffer, { caption: "🖼 *Imagen generada.*", parse_mode: 'Markdown' });
+            cleanText = cleanText.replace(match[0], '');
+        } catch (e) { console.error("Error IMG:", e); }
+    }
+
+    // 3. GENERAR VIDEO (GIF ANIMADO)
+    const vidRegex = /##CREATE_VIDEO::(.*?)##/g;
+    while ((match = vidRegex.exec(text)) !== null) {
+        try {
+            const videoBuffer = await generateVideo(JSON.parse(match[1]));
+            await bot.sendVideo(chatId, videoBuffer, { caption: "🎥 *Video generado.*", parse_mode: 'Markdown' });
+            cleanText = cleanText.replace(match[0], '');
+        } catch (e) { console.error("Error VIDEO:", e); }
+    }
+
+    // Memoria
+    const rUser = /##UP::(.*?)::(.*?)##/g;
+    while ((match = rUser.exec(text)) !== null) { Brain.userProfile[match[1]] = match[2]; cleanText = cleanText.replace(match[0], ''); saveBrain(); }
+
     return cleanText.trim();
 }
 
-function buildContextString() {
-    return `
---- [MEMORIA DEL SISTEMA] ---
-[USUARIO]: ${JSON.stringify(Brain.userProfile)}
-[PROYECTO ACTIVO]: ${JSON.stringify(Brain.projectContext)}
-[REGLAS DE ESTILO]: ${JSON.stringify(Brain.styleRules)}
------------------------------`;
+// --- MOTORES DE RENDERIZADO ---
+
+// Función para Imagenes (Jimp)
+async function generateImage(inst) {
+    const image = new jimp(inst.w || 512, inst.h || 512, inst.bg || '#000000');
+    const font = await jimp.loadFont(jimp.FONT_SANS_32_WHITE);
+    if (inst.actions) {
+        for (const act of inst.actions) {
+            if (act.type === 'rect') {
+                const color = jimp.cssColorToHex(act.color || '#FFFFFF');
+                image.scan(act.x, act.y, act.w, act.h, function (x, y, idx) {
+                     // Pintar solo si está dentro de límites
+                     if (x >= act.x && x < act.x + act.w && y >= act.y && y < act.y + act.h) {
+                         this.bitmap.data[idx + 0] = (color >> 24) & 0xFF;
+                         this.bitmap.data[idx + 1] = (color >> 16) & 0xFF;
+                         this.bitmap.data[idx + 2] = (color >> 8) & 0xFF;
+                         this.bitmap.data[idx + 3] = color & 0xFF;
+                     }
+                });
+            }
+            if (act.type === 'text') {
+                image.print(font, act.x, act.y, act.text);
+            }
+        }
+    }
+    return await image.getBufferAsync(jimp.MIME_PNG);
+}
+
+// Función para Video (GIF Encoder)
+async function generateVideo(inst) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const w = inst.w || 512;
+            const h = inst.h || 512;
+            const encoder = new GIFEncoder(w, h);
+            encoder.start();
+            encoder.setRepeat(0); // Loop
+            encoder.setDelay(inst.delay || 1000); // 1s por frame
+            encoder.setQuality(10); 
+            
+            const font = await jimp.loadFont(jimp.FONT_SANS_32_WHITE);
+            
+            // Crear frames
+            for (const frame of inst.frames) {
+                // Crear lienzo base para el frame
+                let img = new jimp(w, h, frame.bg || '#000000');
+                
+                // Renderizar acciones del frame
+                if (frame.actions) {
+                    for (const act of frame.actions) {
+                         if (act.type === 'rect') {
+                            const color = jimp.cssColorToHex(act.color || '#FFFFFF');
+                            img.scan(act.x, act.y, act.w, act.h, function (x, y, idx) {
+                                this.bitmap.data[idx + 0] = (color >> 24) & 0xFF;
+                                this.bitmap.data[idx + 1] = (color >> 16) & 0xFF;
+                                this.bitmap.data[idx + 2] = (color >> 8) & 0xFF;
+                                this.bitmap.data[idx + 3] = color & 0xFF;
+                            });
+                        }
+                        if (act.type === 'text') {
+                            img.print(font, act.x, act.y, act.text);
+                        }
+                    }
+                }
+                
+                // Añadir frame al encoder
+                encoder.addFrame(img.bitmap.data);
+            }
+            
+            encoder.finish();
+            
+            // Convertir stream a buffer
+            const buffer = encoder.out.getData();
+            resolve(buffer);
+            
+        } catch (e) { reject(e); }
+    });
+}
+
+// Utilidad ZIP
+function createZip(sourceDir, outPath, files) {
+    return new Promise((resolve, reject) => {
+        const output = fs.createWriteStream(outPath);
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        output.on('close', () => resolve());
+        archive.on('error', err => reject(err));
+        archive.pipe(output);
+        files.forEach(file => {
+            const filePath = path.join(sourceDir, file);
+            if (fs.existsSync(filePath)) archive.file(filePath, { name: file });
+        });
+        archive.finalize();
+    });
 }
 
 function splitMsg(text) {
@@ -164,25 +265,19 @@ function splitMsg(text) {
 
 // --- COMANDOS ---
 bot.onText(/\/start/, async (msg) => {
-    const name = Brain.userProfile.name || msg.from.first_name;
-    const model = await getValidModel(msg.chat.id); // Verificamos conexión al inicio
-    
+    const model = await getValidModel(msg.chat.id);
     bot.sendMessage(msg.chat.id, 
-        `🟣 *PROMETHEUS APEX v22.0*\n\nHola, ${name}.\nEstado: ${model ? 'Conectado' : 'Error de conexión'}.\n\n` +
-        `🚀 *Capacidades Extendidas:*\n` +
-        `• Arquitectura de Software (Full-Stack).\n` +
-        `• Ingeniería Civil y Cálculo Estructural.\n` +
-        `• Análisis de Documentos Técnicos.\n` +
-        `• Memoria Contextual Profunda.\n\n` +
-        `💬 *Escribe tu指令.`, { parse_mode: 'Markdown' });
+        `🟣 *PROMETHEUS OMNIPOTENT v26.0*\n\nSistema de Acción Directa.\n\n` +
+        `🛠 *Capacidades:*\n` +
+        `• 📦 Generar Apps (.zip).\n` +
+        `• 🖼 Generar Imágenes.\n` +
+        `• 🎥 Generar Videos/Animaciones.\n` +
+        `• 🧠 Razonamiento Complejo.\n\n` +
+        `💬 *Pide una app o un video.`, { parse_mode: 'Markdown' });
 });
 
 bot.onText(/\/reset/, (msg) => { delete sessions[msg.chat.id]; bot.sendMessage(msg.chat.id, "♻️ Chat reiniciado."); });
-bot.onText(/\/wipe/, (msg) => { 
-    Brain = { identity: { version: "22.0" }, userProfile: {}, projectContext: {}, styleRules: [], activeModel: null }; 
-    saveBrain(); 
-    bot.sendMessage(msg.chat.id, "💥 Memoria y configuración borradas. Reiniciando..."); 
-});
+bot.onText(/\/wipe/, (msg) => { Brain = { identity: {}, userProfile: {}, projectContext: {}, activeModel: null }; saveBrain(); bot.sendMessage(msg.chat.id, "💥 Reset total."); });
 
 // --- NÚCLEO PRINCIPAL ---
 bot.on('message', async (msg) => {
@@ -199,102 +294,69 @@ bot.on('message', async (msg) => {
     sessions[userId].push({ role: "user", content: text });
     if (sessions[userId].length > 16) sessions[userId].shift();
 
-    const systemPrompt = APEX_SYSTEM_PROMPT + buildContextString();
-
     try {
         bot.sendChatAction(chatId, 'typing');
 
-        const response = await axios.post(API_URL, {
+        const response = await axios.post(CLAUDE_URL, {
             model: model,
-            max_tokens: 4096, // Límite alto para código completo
-            system: systemPrompt,
-            messages: sessions[userId] // Claude usa historial directo (user/assistant)
+            max_tokens: 4096,
+            system: OMNIPOTENT_SYSTEM_PROMPT,
+            messages: sessions[userId]
         }, {
-            headers: { 
-                'x-api-key': API_KEY, 
-                'anthropic-version': '2023-06-01', 
-                'Content-Type': 'application/json' 
-            }
+            headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' }
         });
 
         let rawReply = response.data.content[0].text;
-        const finalReply = processResponse(rawReply);
         
-        sessions[userId].push({ role: "assistant", content: finalReply });
+        // --- EJECUCIÓN DE HERRAMIENTAS ---
+        const cleanReply = await handleTools(rawReply, chatId);
+        
+        sessions[userId].push({ role: "assistant", content: cleanReply || "He procesado tu solicitud." });
 
-        const parts = splitMsg(finalReply);
-        for (const p of parts) await bot.sendMessage(chatId, p, { parse_mode: 'Markdown' });
+        if (cleanReply && cleanReply.length > 0) {
+            const parts = splitMsg(cleanReply);
+            for (const p of parts) await bot.sendMessage(chatId, p, { parse_mode: 'Markdown' });
+        }
 
     } catch (error) {
-        console.error("ERROR CLAUDE:", error.response ? error.response.data : error.message);
-        // Si falla un modelo guardado, lo reseteamos para buscar otro en el siguiente intento
+        console.error("ERROR:", error.message);
         if (Brain.activeModel) { Brain.activeModel = null; saveBrain(); }
-        bot.sendMessage(chatId, `❌ *Error de Procesamiento.*\nEl modelo actual podría estar saturado. Intenta de nuevo.`, { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, `❌ Error en la matriz.`);
     }
 });
 
-// --- MANEJO DE PDF ---
+// --- MANEJO DE PDF Y VISIÓN ---
 bot.on('document', async (msg) => {
     const chatId = msg.chat.id;
     if (msg.document.mime_type !== 'application/pdf') return bot.sendMessage(chatId, "⚠️ Solo PDFs.");
-
-    const model = await getValidModel(chatId);
-    if (!model) return;
-
-    bot.sendMessage(chatId, "📄 Analizando documento técnico...");
+    const model = await getValidModel(chatId); if (!model) return;
+    bot.sendMessage(chatId, "📄 Analizando PDF...");
     try {
         const link = await bot.getFileLink(msg.document.file_id);
         const res = await axios.get(link, { responseType: 'arraybuffer' });
         const data = await pdf(res.data);
-        const textContent = data.text.substring(0, 7000);
-
-        const payload = [{ role: "user", content: `Analiza el siguiente documento y extrae conclusiones técnicas:\n\n${textContent}` }];
-
-        const apiRes = await axios.post(API_URL, {
-            model: model,
-            max_tokens: 4096,
-            system: APEX_SYSTEM_PROMPT + buildContextString(),
-            messages: payload
-        }, { headers: { 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' } });
-
-        const reply = processResponse(apiRes.data.content[0].text);
-        const parts = splitMsg(reply);
+        const payload = [{ role: "user", content: `Analiza:\n\n${data.text.substring(0, 7000)}` }];
+        const apiRes = await axios.post(CLAUDE_URL, { model, max_tokens: 4096, system: OMNIPOTENT_SYSTEM_PROMPT, messages: payload }, { headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' } });
+        let rawReply = apiRes.data.content[0].text;
+        const cleanReply = await handleTools(rawReply, chatId);
+        const parts = splitMsg(cleanReply);
         for (const p of parts) await bot.sendMessage(chatId, p, { parse_mode: 'Markdown' });
-
-    } catch (e) { bot.sendMessage(chatId, `❌ Error PDF: ${e.message}`); }
+    } catch (e) { bot.sendMessage(chatId, `❌ Error PDF`); }
 });
 
-// --- MANEJO DE VISIÓN (CLAUDE SONNET) ---
 bot.on('photo', async (msg) => {
     const chatId = msg.chat.id;
-    const model = await getValidModel(chatId);
-    if (!model) return;
-
+    const model = await getValidModel(chatId); if (!model) return;
     try {
         const photo = msg.photo[msg.photo.length - 1];
         const link = await bot.getFileLink(photo.file_id);
         const imgRes = await axios.get(link, { responseType: 'arraybuffer' });
         const b64 = Buffer.from(imgRes.data, 'binary').toString('base64');
-        const mime = 'image/jpeg';
-
-        const payload = [{ 
-            role: "user", 
-            content: [
-                { type: "image", source: { type: "base64", media_type: mime, data: b64 } },
-                { type: "text", text: msg.caption || "Analiza esta imagen con visión técnica experta." }
-            ]
-        }];
-
-        const res = await axios.post(API_URL, {
-            model: model, // Claude Sonnet soporta visión nativa
-            max_tokens: 1024,
-            system: APEX_SYSTEM_PROMPT + buildContextString(),
-            messages: payload
-        }, { headers: { 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' } });
-
-        const reply = processResponse(res.data.content[0].text);
-        const parts = splitMsg(reply);
+        const payload = [{ role: "user", content: [ { type: "image", source: { type: "base64", media_type: 'image/jpeg', data: b64 } }, { type: "text", text: msg.caption || "Analiza" } ] }];
+        const res = await axios.post(CLAUDE_URL, { model, max_tokens: 1024, system: OMNIPOTENT_SYSTEM_PROMPT, messages: payload }, { headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' } });
+        let rawReply = res.data.content[0].text;
+        const cleanReply = await handleTools(rawReply, chatId);
+        const parts = splitMsg(cleanReply);
         for (const p of parts) await bot.sendMessage(chatId, p, { parse_mode: 'Markdown' });
-
-    } catch (e) { bot.sendMessage(chatId, `❌ Error de Visión: ${e.message}`); }
+    } catch (e) { bot.sendMessage(chatId, `❌ Error Visión`); }
 });
