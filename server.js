@@ -1,61 +1,70 @@
-import { Telegraf } from 'telegraf';
 import express from 'express';
+import TelegramBot from 'node-telegram-bot-api';
 import axios from 'axios';
-import fs from 'fs';
 
 const app = express();
-const port = process.env.PORT || 10000;
+app.use(express.json());
 
-// 1. KEEPALIVE PARA RENDER
-app.get('/', (req, res) => res.send('NEXUS-V2000 | AGENTE OPERATIVO'));
-app.listen(port, '0.0.0.0', () => console.log(`🚀 Puerto ${port} validado.`));
+// VARIABLES DE ENTORNO
+const token = process.env.TELEGRAM_BOT_TOKEN;
+const aiKey = process.env.AI_API_KEY;
+const aiUrl = process.env.AI_API_URL || 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+const url = process.env.RENDER_EXTERNAL_URL; // URL de tu servicio en Render
+const adminId = "8598281572"; // Tu ID de usuario
 
-const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
-const ADMIN_ID = "8598281572"; 
+const bot = new TelegramBot(token);
 
-bot.on('text', async (ctx) => {
-    if (ctx.from.id.toString() !== ADMIN_ID) return;
+// CONFIGURACIÓN DE WEBHOOK (Evita que el bot se duerma en Render)
+bot.setWebHook(`${url}/bot${token}`);
 
-    await ctx.sendChatAction('typing');
-
-    try {
-        // CORRECCIÓN DE URL Y MODELO
-        const response = await axios.post('https://api.z.ai/v1/chat/completions', {
-            // Cambiamos el nombre al modelo estándar de GLM que suele estar en Z.ai
-            // Si en tu panel ves "glm-4" exactamente, déjalo así. 
-            model: "glm-4", 
-            messages: [
-                { 
-                    role: "system", 
-                    content: "ERES EL CLON DE MOLTBOT. Dueño: Cristian García. Tu misión: Gestión de Casas Confortables (EPS) a 1.390€/m2. Generas archivos operativos." 
-                },
-                { role: "user", content: ctx.message.text }
-            ]
-        }, {
-            headers: { 
-                'Authorization': `Bearer ${process.env.GLM_API_KEY}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        const reply = response.data.choices[0].message.content;
-
-        if (reply.includes('```')) {
-            const fileName = `nexus_app_${Date.now()}.html`;
-            const match = reply.match(/```(?:html)?([\s\S]*?)```/i);
-            if (match) {
-                fs.writeFileSync(fileName, match[1].trim());
-                await ctx.replyWithDocument({ source: fileName }, { caption: "✅ MÓDULO GENERADO POR GLM" });
-                fs.unlinkSync(fileName);
-            }
-        } else {
-            await ctx.reply(reply);
-        }
-    } catch (err) {
-        // Este log te dirá exactamente qué está mal si vuelve a fallar
-        console.error("DETALLE DEL ERROR:", err.response ? err.response.data : err.message);
-        await ctx.reply(`🚨 Error en el núcleo GLM: ${err.message}`);
-    }
+app.post(`/bot${token}`, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
 });
 
-bot.launch();
+// LÓGICA DEL BOT
+bot.on('text', async (msg) => {
+  const chatId = msg.chat.id;
+  const text = msg.text;
+
+  // SEGURIDAD: Solo tú mandas
+  if (chatId.toString() !== adminId) return;
+
+  try {
+    const response = await axios.post(aiUrl, {
+      model: "glm-4", // O el modelo específico que tengas contratado
+      messages: [
+        { role: "system", content: "Eres el clon de MOLTBOT. Dueño: Cristian García. Especialista en Casas de EPS a 1.390€/m2. Generas apps y archivos operativos." },
+        { role: "user", content: text }
+      ]
+    }, {
+      headers: {
+        'Authorization': `Bearer ${aiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const aiReply = response.data.choices[0].message.content;
+
+    // Si la IA genera una App (Código), la enviamos como archivo
+    if (aiReply.includes('```')) {
+        const fileName = `molt_module_${Date.now()}.html`;
+        const fs = await import('fs');
+        const code = aiReply.match(/```(?:html)?([\s\S]*?)```/i)[1];
+        fs.writeFileSync(fileName, code.trim());
+        await bot.sendDocument(chatId, fileName, { caption: "✅ Módulo MoltBot Generado." });
+        fs.unlinkSync(fileName);
+    } else {
+        bot.sendMessage(chatId, aiReply);
+    }
+
+  } catch (error) {
+    console.error(error.response ? error.response.data : error.message);
+    bot.sendMessage(chatId, "🚨 Error en el núcleo GLM: " + (error.response?.data?.error?.message || error.message));
+  }
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Servidor Nexus operativo en puerto ${port}`);
+});
