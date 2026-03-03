@@ -1,7 +1,7 @@
 {
-  "name": "omega-prometheus-v13",
-  "version": "13.0.0",
-  "description": "Arquitectura de IA con Razonamiento, Auto-Mejora y Generación de Ecosistemas.",
+  "name": "prometheus-ultimate-v14",
+  "version": "14.0.0",
+  "description": "Arquitectura de IA definitiva con Razonamiento y Estabilidad.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
