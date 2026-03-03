@@ -15,27 +15,48 @@ const bot = new TelegramBot(token, { polling: true });
 const API_KEY = process.env.GL_API_KEY;
 const API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 
-// --- NÚCLEO DE MEMORIA SEMÁNTICA (NEOCORTEX) ---
-const BRAIN_FILE = 'neocortex.json';
+// --- NÚCLEO DE MEMORIA (AJUSTADO A /data) ---
+// Usamos la ruta /data que es donde montaste el disco en Render
+const DATA_DIR = '/data';
+const BRAIN_FILE = `${DATA_DIR}/neocortex.json`;
+
 let knowledgeGraph = {
     identity: { version: "11.0", type: "Architect" },
     userProfile: {},
     projectFacts: {},
-    preferences: {},
-    learnedSkills: [] // Nuevas habilidades aprendidas
+    preferences: {}
 };
 
 function loadBrain() {
     try {
+        // Asegurarse de que el directorio existe (por si acaso)
+        if (!fs.existsSync(DATA_DIR)) {
+            fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+
         if (fs.existsSync(BRAIN_FILE)) {
-            knowledgeGraph = JSON.parse(fs.readFileSync(BRAIN_FILE, 'utf8'));
-            console.log(`🧠 Neocortex Cargado: ${Object.keys(knowledgeGraph.projectFacts).length} Hechos.`);
-        } else { saveBrain(); }
-    } catch (e) { console.error("Error en Neocortex:", e); }
+            const data = fs.readFileSync(BRAIN_FILE, 'utf8');
+            knowledgeGraph = JSON.parse(data);
+            console.log(`🧠 Neocortex Cargado desde Disco: ${Object.keys(knowledgeGraph.projectFacts).length} Hechos.`);
+        } else {
+            saveBrain();
+        }
+    } catch (e) { 
+        console.error("Error en Neocortex:", e); 
+        // Si falla la carga, iniciamos limpio
+        knowledgeGraph = { identity: { version: "11.0" }, userProfile: {}, projectFacts: {}, preferences: {} };
+    }
 }
 
 function saveBrain() {
-    fs.writeFileSync(BRAIN_FILE, JSON.stringify(knowledgeGraph, null, 2));
+    try {
+        if (!fs.existsSync(DATA_DIR)) {
+            fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+        fs.writeFileSync(BRAIN_FILE, JSON.stringify(knowledgeGraph, null, 2));
+    } catch (e) { 
+        console.error("Error CRÍTICO guardando en disco:", e); 
+    }
 }
 
 loadBrain();
@@ -80,14 +101,13 @@ function processMetaResponse(text, chatId) {
     let match;
     let visibleText = text;
 
-    // Procesar etiquetas de memoria
     while ((match = regexUser.exec(text)) !== null) { knowledgeGraph.userProfile[match[1]] = match[2]; visibleText = visibleText.replace(match[0], ''); }
     while ((match = regexFact.exec(text)) !== null) { knowledgeGraph.projectFacts[match[1]] = match[2]; visibleText = visibleText.replace(match[0], ''); }
     while ((match = regexPref.exec(text)) !== null) { knowledgeGraph.preferences[match[1]] = match[2]; visibleText = visibleText.replace(match[0], ''); }
 
     if (text !== visibleText) {
         saveBrain();
-        console.log("💾 Memoria sincronizada.");
+        console.log("💾 Memoria sincronizada en disco persistente.");
     }
     return visibleText.trim();
 }
@@ -150,7 +170,7 @@ bot.on('callback_query', (callbackQuery) => {
     if (data === 'mode_eng') bot.sendMessage(msg.chat.id, '📐 *Modo Ingeniería.*\nEnvía cálculos, fotos de planos o preguntas de normativa. Usaré Eurocódigo/CTE.', { parse_mode: 'Markdown' });
     if (data === 'show_memory') {
         const mem = JSON.stringify(knowledgeGraph, null, 2);
-        bot.sendMessage(msg.chat.id, `🧠 *Mi Cerebro Actual:*\n\`\`\`json\n${mem}\n\`\`\``, { parse_mode: 'Markdown' });
+        bot.sendMessage(msg.chat.id, `🧠 *Mi Cerebro Actual (Disco Persistente):*\n\`\`\`json\n${mem}\n\`\`\``, { parse_mode: 'Markdown' });
     }
 });
 
