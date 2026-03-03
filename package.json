@@ -1,7 +1,7 @@
 {
-  "name": "prometheus-apex-v16",
-  "version": "16.0.0",
-  "description": "Arquitectura de IA APEX: Razonamiento, Memoria Estructural y Generación de Software.",
+  "name": "prometheus-apex-v18",
+  "version": "18.0.0",
+  "description": "Bot APEX ULTIMATE con modelo GLM-4-Flash y razonamiento mejorado.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
