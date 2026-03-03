@@ -1,70 +1,55 @@
+import { Telegraf } from 'telegraf';
 import express from 'express';
-import TelegramBot from 'node-telegram-bot-api';
 import axios from 'axios';
+import fs from 'fs';
 
 const app = express();
-app.use(express.json());
+const port = process.env.PORT || 10000;
 
-// VARIABLES DE ENTORNO
-const token = process.env.TELEGRAM_BOT_TOKEN;
-const aiKey = process.env.AI_API_KEY;
-const aiUrl = process.env.AI_API_URL || 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-const url = process.env.RENDER_EXTERNAL_URL; // URL de tu servicio en Render
-const adminId = "8598281572"; // Tu ID de usuario
+// 1. SEÑAL PARA RENDER (Evita el error de puerto)
+app.get('/', (req, res) => res.send('NEXUS-V2000 | AGENTIC CORE ACTIVE'));
+app.listen(port, '0.0.0.0', () => console.log(`Puerto ${port} validado.`));
 
-const bot = new TelegramBot(token);
+const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 
-// CONFIGURACIÓN DE WEBHOOK (Evita que el bot se duerma en Render)
-bot.setWebHook(`${url}/bot${token}`);
-
-app.post(`/bot${token}`, (req, res) => {
-  bot.processUpdate(req.body);
-  res.sendStatus(200);
-});
-
-// LÓGICA DEL BOT
-bot.on('text', async (msg) => {
-  const chatId = msg.chat.id;
-  const text = msg.text;
-
-  // SEGURIDAD: Solo tú mandas
-  if (chatId.toString() !== adminId) return;
+bot.on('text', async (ctx) => {
+  if (ctx.from.id.toString() !== "8598281572") return;
 
   try {
-    const response = await axios.post(aiUrl, {
-      model: "glm-4", // O el modelo específico que tengas contratado
+    // 2. CONEXIÓN AL MOTOR GLM
+    const response = await axios.post('https://api.z.ai/v1/chat/completions', {
+      model: "glm-4", // CAMBIADO A GLM-4 PARA EVITAR EL ERROR 404
       messages: [
-        { role: "system", content: "Eres el clon de MOLTBOT. Dueño: Cristian García. Especialista en Casas de EPS a 1.390€/m2. Generas apps y archivos operativos." },
-        { role: "user", content: text }
-      ]
+        { role: "system", content: "Eres NEXUS-V2000. Motor Agentic Engineering. Dueño: Cristian García. Especialista en Casas EPS a 1.390€/m2." },
+        { role: "user", content: ctx.message.text }
+      ],
+      temperature: 0.2
     }, {
-      headers: {
-        'Authorization': `Bearer ${aiKey}`,
+      headers: { 
+        'Authorization': `Bearer ${process.env.GL_API_KEY}`, // Asegúrate que la variable en Render se llame así
         'Content-Type': 'application/json'
       }
     });
 
-    const aiReply = response.data.choices[0].message.content;
-
-    // Si la IA genera una App (Código), la enviamos como archivo
-    if (aiReply.includes('```')) {
-        const fileName = `molt_module_${Date.now()}.html`;
-        const fs = await import('fs');
-        const code = aiReply.match(/```(?:html)?([\s\S]*?)```/i)[1];
-        fs.writeFileSync(fileName, code.trim());
-        await bot.sendDocument(chatId, fileName, { caption: "✅ Módulo MoltBot Generado." });
-        fs.unlinkSync(fileName);
+    const reply = response.data.choices[0].message.content;
+    
+    // 3. GENERADOR DE MÓDULOS (MoltBot Style)
+    if (reply.includes('```')) {
+      const fileName = `nexus_mod_${Date.now()}.html`;
+      const codeMatch = reply.match(/```(?:html)?([\s\S]*?)```/i);
+      const code = codeMatch ? codeMatch[1].trim() : reply;
+      
+      fs.writeFileSync(fileName, code);
+      await ctx.replyWithDocument({ source: fileName }, { caption: "📦 Módulo generado por el núcleo GLM." });
+      fs.unlinkSync(fileName);
     } else {
-        bot.sendMessage(chatId, aiReply);
+      await ctx.reply(reply);
     }
-
-  } catch (error) {
-    console.error(error.response ? error.response.data : error.message);
-    bot.sendMessage(chatId, "🚨 Error en el núcleo GLM: " + (error.response?.data?.error?.message || error.message));
+  } catch (err) {
+    // Si la API devuelve un error específico, lo mostramos aquí
+    const errorMsg = err.response?.data?.error?.message || err.message;
+    ctx.reply(`🚨 ERROR DE NÚCLEO: ${errorMsg}`);
   }
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Servidor Nexus operativo en puerto ${port}`);
-});
+bot.launch();
