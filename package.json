@@ -1,7 +1,7 @@
 {
-  "name": "prometheus-apex-prime-v22",
-  "version": "22.0.0",
-  "description": "Arquitectura de IA definitiva con Claude Sonnet 4.6 y funciones extendidas.",
+  "name": "prometheus-omnipotent-v26",
+  "version": "26.0.0",
+  "description": "Sistema de IA Omnipotente con generación directa de Video, Imagen y Software.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -11,6 +11,9 @@
     "node-telegram-bot-api": "^0.64.0",
     "axios": "^1.6.7",
     "dotenv": "^16.4.1",
-    "pdf-parse": "^1.1.1"
+    "pdf-parse": "^1.1.1",
+    "jimp": "^0.22.10",
+    "gifencoder": "^2.0.1",
+    "archiver": "^7.0.1"
   }
 }
