@@ -1,7 +1,7 @@
 {
-  "name": "nexus-v2000-moltbot",
-  "version": "1.0.0",
-  "type": "module",
+  "name": "omega-architect-system",
+  "version": "11.0.0",
+  "description": "Plataforma IA definitiva: PDF, Visión, Ingeniería y Apps.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -9,7 +9,8 @@
   "dependencies": {
     "express": "^4.18.2",
     "node-telegram-bot-api": "^0.64.0",
-    "axios": "^1.6.0",
-    "dotenv": "^16.3.1"
+    "axios": "^1.6.7",
+    "dotenv": "^16.4.1",
+    "pdf-parse": "^1.1.1"
   }
 }
