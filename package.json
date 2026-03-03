@@ -1,7 +1,7 @@
 {
-  "name": "prometheus-ultra-v20",
-  "version": "20.0.0",
-  "description": "Arquitectura IA definitiva con Auto-Detección de Modelos y Razonamiento Superior.",
+  "name": "prometheus-apex-prime-v22",
+  "version": "22.0.0",
+  "description": "Arquitectura de IA definitiva con Claude Sonnet 4.6 y funciones extendidas.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
