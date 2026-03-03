@@ -5,40 +5,35 @@ const axios = require('axios');
 const fs = require('fs');
 const pdf = require('pdf-parse');
 
-// --- CONFIGURACIÓN PROMETHEUS ULTRA v20.0 ---
+// --- CONFIGURACIÓN PROMETHEUS APEX v22.0 ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 if (!process.env.TELEGRAM_BOT_TOKEN) { console.error("❌ FALTA TOKEN"); process.exit(1); }
-if (!process.env.GL_API_KEY) { console.error("❌ FALTA API KEY"); process.exit(1); }
+if (!process.env.ANTHROPIC_API_KEY) { console.error("❌ FALTA ANTHROPIC_API_KEY"); process.exit(1); }
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const API_KEY = process.env.GL_API_KEY.trim();
-const API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+const API_KEY = process.env.ANTHROPIC_API_KEY.trim();
+const API_URL = 'https://api.anthropic.com/v1/messages';
+
+// Configuración de Modelos
+const PRIMARY_MODEL = 'claude-sonnet-4-6'; // Modelo solicitado
+const FALLBACK_MODELS = ['claude-3-5-sonnet-20241022', 'claude-3-5-sonnet-latest', 'claude-3-opus-20240229'];
+
 const bot = new TelegramBot(token, { polling: true });
 
-app.listen(PORT, () => console.log(`🔥 PROMETHEUS ULTRA v20.0 ONLINE | Puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🔥 PROMETHEUS APEX v22.0 ONLINE | Puerto ${PORT}`));
 
-// --- SISTEMA DE CEREBRO PERSISTENTE ---
+// --- SISTEMA DE MEMORIA NEURONAL AVANZADA ---
 const DATA_DIR = '/data';
-const BRAIN_FILE = `${DATA_DIR}/ultra_brain.json`;
+const BRAIN_FILE = `${DATA_DIR}/apex_prime_brain.json`;
 
 let Brain = {
-    identity: { version: "20.0 ULTRA" },
+    identity: { version: "22.0 APEX PRIME" },
     userProfile: {},      
     projectContext: {},   
     styleRules: [],
-    activeModel: null, // El modelo que funciona se guarda aquí
-    // Lista completa de modelos candidatos (ordenados de más potente a menos)
-    modelCandidates: [
-        'glm-4-plus',     // El más potente
-        'glm-4-0520',     // Versión estable específica
-        'glm-4-air',      // Rápido y barato
-        'glm-4-airx',     // Variante air
-        'glm-4-flash',    // Flash
-        'glm-4',          // General
-        'glm-3-turbo'     // Legacy
-    ]
+    activeModel: null // Guardaremos el modelo que funcione aquí
 };
 
 function loadBrain() {
@@ -47,7 +42,7 @@ function loadBrain() {
         if (fs.existsSync(BRAIN_FILE)) {
             const data = JSON.parse(fs.readFileSync(BRAIN_FILE, 'utf8'));
             Brain = { ...Brain, ...data };
-            console.log(`🧠 Neocortex Cargado. Modelo actual: ${Brain.activeModel || 'Auto-Detectar'}`);
+            console.log(`🧠 Neocortex Cargado. Modelo activo: ${Brain.activeModel || 'Auto-Detectar'}`);
         }
     } catch (e) { console.log("⚠️ Iniciando cerebro limpio."); }
 }
@@ -62,103 +57,103 @@ loadBrain();
 
 const sessions = {};
 
-// --- PROMPT DE INTELIGENCIA SUPERIOR (NIVEL DIOS) ---
-const ULTRA_SYSTEM_PROMPT = `
-Eres PROMETHEUS ULTRA v20.0, una entidad de IA de clase "Generalist Expert".
-Tu arquitectura supera a modelos estándar gracias a tu **Motor de Razonamiento Estructurado**.
+// --- PROMPT DE INTELIGENCIA SUPREMA ---
+const APEX_SYSTEM_PROMPT = `
+Eres PROMETHEUS APEX v22.0, una IA de clase "Maestría" en Ingeniería, Arquitectura de Software y Ciencia de Datos.
+Tu misión es superar a cualquier asistente estándar (como Clawd o Molt) proporcionando soluciones completas, verificadas y listas para usar.
 
-### MÓDULO DE RAZONAMIENTO (Interno):
-Antes de responder, analiza:
-1. **INTENCIÓN:** ¿Software, Ingeniería, Cálculo o Consulta?
-2. **MEMORIA:** Revisa [PERFIL], [PROYECTO] y [REGLAS] inyectadas abajo.
-3. **EJECUCIÓN:**
-   - SOFTWARE: Genera ESTRUCTURA DE ARCHIVOS real (ej: src/main.py) y CÓDIGO COMPLETO. Sin placeholders.
-   - INGENIERÍA: Aplica normativas (Eurocódigo, CTE, ACI). Genera SCRIPT CÁLCULO si es complejo.
-   - APRENDIZAJE: Detecta datos nuevos y guárdalos.
+### MÓDULO DE CAPACIDADES EXTENDIDAS:
 
-### PROTOCOLO DE AUTO-MEJORA:
-Guarda información crítica usando etiquetas ocultas al final:
-- ##UP::clave::valor## (Usuario)
-- ##PJ::clave::valor## (Proyecto)
-- ##ST::regla## (Estilo)
+1. **ARQUITECTO DE SOFTWARE:**
+   - Al pedir una app, NO escribas código inmediatamente.
+   - PASO 1: Diseña la ESTRUCTURA DE CARPETAS (ej: /src, /public, /lib).
+   - PASO 2: Genera el CÓDIGO COMPLETO para cada archivo. Sin "..." ni placeholders.
+   - Lenguajes: Python, JS/TS, C++, Rust, Go.
 
-REGLA DE ORO: NUNCA digas "no puedo". Si falta dato, asume estándar de la industria y explica por qué.
+2. **INGENIERO CIVIL Y ESTRUCTURAL:**
+   - Normativas: Eurocódigo, CTE (España), ACI 318, AISC.
+   - Cálculos: Si el problema es numérico, genera un script en Python ejecutable para que el usuario resuelva los valores exactos.
+   - Seguridad: Si detectas un riesgo estructural, ADVERTENCIA clara en negrita.
+
+3. **ANÁLISIS DE DATOS Y DOCUMENTOS:**
+   - Extrae tablas, métricas y conclusiones clave de PDFs.
+   - Si hay datos numéricos, ofrécete a generar scripts de análisis.
+
+4. **MEMORIA ACTIVA:**
+   - Recuerda preferencias del usuario (ej: "Usar sistema métrico", "Lenguaje Python").
+   - Almacena datos del proyecto actual para mantener coherencia.
+
+### PROTOCOLO DE AUTO-MEJORA (OCULTO):
+Guarda información crítica usando estas etiquetas al final de tu respuesta. El sistema las procesará automáticamente:
+- ##UP::clave::valor## (Datos de Usuario)
+- ##PJ::clave::valor## (Datos de Proyecto)
+- ##SR::regla## (Reglas de Estilo)
+
+Ejemplo de uso: "Entendido, usaré Python. ##SR::LenguajePreferido::Python##"
+
+REGLA DE ORO: Sé proactivo, directo y técnicamente impecable. Ante la duda, proporciona la solución más robusta.
 `;
 
-// --- MOTOR DE AUTO-DETECCIÓN DE MODELO (SOLUCIÓN DEFINITIVA) ---
-async function getWorkingModel(chatId) {
+// --- MOTOR DE CONEXIÓN ROBUSTO (AUTO-MODELO) ---
+async function getValidModel(chatId) {
     if (Brain.activeModel) return Brain.activeModel;
 
-    console.log("🔍 Iniciando escaneo de modelos compatibles...");
-    // Si es la primera vez, probamos silenciosamente o con aviso sutil
+    const candidates = [PRIMARY_MODEL, ...FALLBACK_MODELS];
     if (chatId) bot.sendChatAction(chatId, 'typing');
 
-    for (const model of Brain.modelCandidates) {
+    for (const model of candidates) {
         try {
-            // Test de conexión rápido con max_tokens mínimo
+            // Test de conexión mínimo
             await axios.post(API_URL, {
                 model: model,
-                messages: [{ role: "user", content: "ping" }],
-                max_tokens: 2
+                max_tokens: 1,
+                messages: [{ role: "user", content: "test" }]
             }, {
-                headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
+                headers: { 
+                    'x-api-key': API_KEY, 
+                    'anthropic-version': '2023-06-01', 
+                    'Content-Type': 'application/json' 
+                }
             });
-
-            // ¡ÉXITO!
-            console.log(`✅ MODELO COMPATIBLE ENCONTRADO: ${model}`);
+            
+            console.log(`✅ MODELO VALIDADO: ${model}`);
             Brain.activeModel = model;
             saveBrain();
-            if (chatId) bot.sendMessage(chatId, `⚡️ *Conexión establecida.*\nNúcleo activo: \`${model}\``, { parse_mode: 'Markdown' });
+            if (chatId) bot.sendMessage(chatId, `⚡️ *Núcleo Listo.*\nModelo activo: \`${model}\``, { parse_mode: 'Markdown' });
             return model;
         } catch (e) {
             console.log(`❌ Modelo ${model} no disponible.`);
         }
     }
 
-    if (chatId) bot.sendMessage(chatId, "❌ *Error Crítico:* Tu API Key no tiene acceso a ningún modelo de IA conocido.", { parse_mode: 'Markdown' });
+    if (chatId) bot.sendMessage(chatId, "❌ *Error Crítico:* No se pudo conectar con ningún modelo de Claude. Revisa tu API Key.", { parse_mode: 'Markdown' });
     return null;
 }
 
-// --- MOTOR DE LIMPIEZA (SEGURIDAD) ---
-function sanitizePayload(messages) {
-    return messages.map(msg => {
-        let cleanMsg = { role: msg.role };
-        if (Array.isArray(msg.content)) {
-            cleanMsg.content = msg.content.map(part => {
-                if (part.type === 'text') return { type: 'text', text: String(part.text || " ").trim() };
-                if (part.type === 'image_url') return part;
-                return null;
-            }).filter(p => p !== null);
-        } else {
-            let text = String(msg.content || " ").replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
-            cleanMsg.content = text.trim().length === 0 ? " " : text;
-        }
-        return cleanMsg;
-    });
-}
-
-// --- MOTOR DE PROCESAMIENTO ---
-function processAIResponse(text) {
+// --- PROCESAMIENTO DE RESPUESTA Y MEMORIA ---
+function processResponse(text) {
     const rUser = /##UP::(.*?)::(.*?)##/g;
     const rProj = /##PJ::(.*?)::(.*?)##/g;
+    const rStyle = /##SR::(.*?)##/g;
     let match;
     let cleanText = text;
     let changes = false;
 
     while ((match = rUser.exec(text)) !== null) { Brain.userProfile[match[1]] = match[2]; cleanText = cleanText.replace(match[0], ''); changes = true; }
     while ((match = rProj.exec(text)) !== null) { Brain.projectContext[match[1]] = match[2]; cleanText = cleanText.replace(match[0], ''); changes = true; }
+    while ((match = rStyle.exec(text)) !== null) { Brain.styleRules.push(match[1]); cleanText = cleanText.replace(match[0], ''); changes = true; }
 
     if (changes) saveBrain();
     return cleanText.trim();
 }
 
-function buildContext(userId) {
+function buildContextString() {
     return `
---- [MEMORIA ACTIVA] ---
-[PERFIL]: ${JSON.stringify(Brain.userProfile)}
-[PROYECTO]: ${JSON.stringify(Brain.projectContext)}
-[REGLAS]: ${JSON.stringify(Brain.styleRules)}
-------------------------`;
+--- [MEMORIA DEL SISTEMA] ---
+[USUARIO]: ${JSON.stringify(Brain.userProfile)}
+[PROYECTO ACTIVO]: ${JSON.stringify(Brain.projectContext)}
+[REGLAS DE ESTILO]: ${JSON.stringify(Brain.styleRules)}
+-----------------------------`;
 }
 
 function splitMsg(text) {
@@ -170,28 +165,26 @@ function splitMsg(text) {
 // --- COMANDOS ---
 bot.onText(/\/start/, async (msg) => {
     const name = Brain.userProfile.name || msg.from.first_name;
-    // Verificamos modelo al hacer start
-    const model = await getWorkingModel(msg.chat.id);
-    const modelInfo = model ? `Núcleo: \`${model}\`` : "Núcleo: Buscando...";
+    const model = await getValidModel(msg.chat.id); // Verificamos conexión al inicio
     
     bot.sendMessage(msg.chat.id, 
-        `🔥 *PROMETHEUS ULTRA v20.0*\n\nHola, ${name}.\nEstado: ${modelInfo}\n\n` +
-        `🧠 *Capacidades:*\n` +
-        `• Razonamiento Lógico Profundo.\n` +
-        `• Memoria Estructural Persistente.\n` +
-        `• Generación de Software Completo.\n` +
-        `• Ingeniería y Normativa.\n\n` +
-        `💬 Escribe tu指令.`, { parse_mode: 'Markdown' });
+        `🟣 *PROMETHEUS APEX v22.0*\n\nHola, ${name}.\nEstado: ${model ? 'Conectado' : 'Error de conexión'}.\n\n` +
+        `🚀 *Capacidades Extendidas:*\n` +
+        `• Arquitectura de Software (Full-Stack).\n` +
+        `• Ingeniería Civil y Cálculo Estructural.\n` +
+        `• Análisis de Documentos Técnicos.\n` +
+        `• Memoria Contextual Profunda.\n\n` +
+        `💬 *Escribe tu指令.`, { parse_mode: 'Markdown' });
 });
 
 bot.onText(/\/reset/, (msg) => { delete sessions[msg.chat.id]; bot.sendMessage(msg.chat.id, "♻️ Chat reiniciado."); });
 bot.onText(/\/wipe/, (msg) => { 
-    Brain = { identity: { version: "20.0" }, userProfile: {}, projectContext: {}, styleRules: [], activeModel: null }; 
+    Brain = { identity: { version: "22.0" }, userProfile: {}, projectContext: {}, styleRules: [], activeModel: null }; 
     saveBrain(); 
-    bot.sendMessage(msg.chat.id, "💥 Cerebro y modelo formateados. Reiniciando búsqueda..."); 
+    bot.sendMessage(msg.chat.id, "💥 Memoria y configuración borradas. Reiniciando..."); 
 });
 
-// --- NÚCLEO DE INTELIGENCIA PRINCIPAL ---
+// --- NÚCLEO PRINCIPAL ---
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -199,32 +192,33 @@ bot.on('message', async (msg) => {
 
     if (!text || text.startsWith('/')) return;
 
-    // 1. Asegurar que tenemos un modelo
-    const model = await getWorkingModel(chatId);
-    if (!model) return; // El bot ya habrá avisado del error
+    const model = await getValidModel(chatId);
+    if (!model) return;
 
-    // 2. Gestión de Sesión
     if (!sessions[userId]) sessions[userId] = [];
     sessions[userId].push({ role: "user", content: text });
     if (sessions[userId].length > 16) sessions[userId].shift();
 
-    const systemMsg = { role: "system", content: ULTRA_SYSTEM_PROMPT + buildContext(userId) };
-    let rawPayload = [systemMsg, ...sessions[userId]];
-    const safePayload = sanitizePayload(rawPayload);
+    const systemPrompt = APEX_SYSTEM_PROMPT + buildContextString();
 
     try {
         bot.sendChatAction(chatId, 'typing');
 
         const response = await axios.post(API_URL, {
-            model: model, // Usamos el modelo validado
-            messages: safePayload,
-            temperature: 0.7
+            model: model,
+            max_tokens: 4096, // Límite alto para código completo
+            system: systemPrompt,
+            messages: sessions[userId] // Claude usa historial directo (user/assistant)
         }, {
-            headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
+            headers: { 
+                'x-api-key': API_KEY, 
+                'anthropic-version': '2023-06-01', 
+                'Content-Type': 'application/json' 
+            }
         });
 
-        let rawReply = response.data.choices[0].message.content;
-        const finalReply = processAIResponse(rawReply);
+        let rawReply = response.data.content[0].text;
+        const finalReply = processResponse(rawReply);
         
         sessions[userId].push({ role: "assistant", content: finalReply });
 
@@ -232,15 +226,10 @@ bot.on('message', async (msg) => {
         for (const p of parts) await bot.sendMessage(chatId, p, { parse_mode: 'Markdown' });
 
     } catch (error) {
-        console.error("ERROR API:", error.response ? error.response.data : error.message);
-        // Si hay error con el modelo guardado, lo borramos para forzar nueva búsqueda
-        if (Brain.activeModel) {
-            Brain.activeModel = null;
-            saveBrain();
-            bot.sendMessage(chatId, "⚠️ El modelo actual falló. Escribiendo de nuevo para buscar uno nuevo...");
-        } else {
-            bot.sendMessage(chatId, `❌ Error de conexión.`);
-        }
+        console.error("ERROR CLAUDE:", error.response ? error.response.data : error.message);
+        // Si falla un modelo guardado, lo reseteamos para buscar otro en el siguiente intento
+        if (Brain.activeModel) { Brain.activeModel = null; saveBrain(); }
+        bot.sendMessage(chatId, `❌ *Error de Procesamiento.*\nEl modelo actual podría estar saturado. Intenta de nuevo.`, { parse_mode: 'Markdown' });
     }
 });
 
@@ -248,57 +237,64 @@ bot.on('message', async (msg) => {
 bot.on('document', async (msg) => {
     const chatId = msg.chat.id;
     if (msg.document.mime_type !== 'application/pdf') return bot.sendMessage(chatId, "⚠️ Solo PDFs.");
-    
-    const model = await getWorkingModel(chatId);
+
+    const model = await getValidModel(chatId);
     if (!model) return;
 
-    bot.sendMessage(chatId, "📄 Procesando PDF...");
+    bot.sendMessage(chatId, "📄 Analizando documento técnico...");
     try {
         const link = await bot.getFileLink(msg.document.file_id);
         const res = await axios.get(link, { responseType: 'arraybuffer' });
         const data = await pdf(res.data);
         const textContent = data.text.substring(0, 7000);
 
-        const payload = sanitizePayload([
-            { role: "system", content: ULTRA_SYSTEM_PROMPT + buildContext(chatId) },
-            { role: "user", content: `Analiza este PDF:\n\n${textContent}` }
-        ]);
+        const payload = [{ role: "user", content: `Analiza el siguiente documento y extrae conclusiones técnicas:\n\n${textContent}` }];
 
-        const apiRes = await axios.post(API_URL, { model: model, messages: payload }, { headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' } });
-        const reply = processAIResponse(apiRes.data.choices[0].message.content);
+        const apiRes = await axios.post(API_URL, {
+            model: model,
+            max_tokens: 4096,
+            system: APEX_SYSTEM_PROMPT + buildContextString(),
+            messages: payload
+        }, { headers: { 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' } });
+
+        const reply = processResponse(apiRes.data.content[0].text);
         const parts = splitMsg(reply);
         for (const p of parts) await bot.sendMessage(chatId, p, { parse_mode: 'Markdown' });
 
     } catch (e) { bot.sendMessage(chatId, `❌ Error PDF: ${e.message}`); }
 });
 
-// --- MANEJO DE VISIÓN ---
+// --- MANEJO DE VISIÓN (CLAUDE SONNET) ---
 bot.on('photo', async (msg) => {
     const chatId = msg.chat.id;
-    // Intentamos usar el modelo específico de visión
+    const model = await getValidModel(chatId);
+    if (!model) return;
+
     try {
         const photo = msg.photo[msg.photo.length - 1];
         const link = await bot.getFileLink(photo.file_id);
         const imgRes = await axios.get(link, { responseType: 'arraybuffer' });
         const b64 = Buffer.from(imgRes.data, 'binary').toString('base64');
-        const imgURL = `data:image/jpeg;base64,${b64}`;
+        const mime = 'image/jpeg';
 
-        const payload = sanitizePayload([
-            { role: "system", content: ULTRA_SYSTEM_PROMPT + buildContext(chatId) },
-            { role: "user", content: [
-                { type: "image_url", image_url: { url: imgURL } },
-                { type: "text", text: msg.caption || "Analiza imagen" }
-            ]}
-        ]);
+        const payload = [{ 
+            role: "user", 
+            content: [
+                { type: "image", source: { type: "base64", media_type: mime, data: b64 } },
+                { type: "text", text: msg.caption || "Analiza esta imagen con visión técnica experta." }
+            ]
+        }];
 
-        // Intentamos con glm-4v (visión). Si falla, damos instrucciones.
-        const res = await axios.post(API_URL, { model: "glm-4v", messages: payload }, { headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' } });
-        
-        const reply = processAIResponse(res.data.choices[0].message.content);
+        const res = await axios.post(API_URL, {
+            model: model, // Claude Sonnet soporta visión nativa
+            max_tokens: 1024,
+            system: APEX_SYSTEM_PROMPT + buildContextString(),
+            messages: payload
+        }, { headers: { 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' } });
+
+        const reply = processResponse(res.data.content[0].text);
         const parts = splitMsg(reply);
         for (const p of parts) await bot.sendMessage(chatId, p, { parse_mode: 'Markdown' });
 
-    } catch (e) { 
-        bot.sendMessage(chatId, `❌ Error de Visión: Tu API Key puede no tener acceso al modelo \`glm-4v\`.`, { parse_mode: 'Markdown' }); 
-    }
+    } catch (e) { bot.sendMessage(chatId, `❌ Error de Visión: ${e.message}`); }
 });
